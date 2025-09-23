@@ -44,8 +44,14 @@ echo "\n";
 function edit(int $index, string $title, string $text, array &$storage): bool
 {
     if (array_key_exists($index, $storage)) { 
-        $storage[$index]['title'] = $title;
-        $storage[$index]['text'] = $text;
+        //
+        if (!empty($title)) {
+            $storage[$index]['title'] = $title;
+        }
+        // Если передан непустой текст - обновляем его
+        if (!empty($text)) {
+            $storage[$index]['text'] = $text;
+        }
         return true;
     }
     return false;
@@ -53,7 +59,7 @@ function edit(int $index, string $title, string $text, array &$storage): bool
 
 // Тестируем функцию edit
 echo "Результат редактирования элемента с индексом 0: ";
-var_dump(edit(0, 'Обновленный заголовок', $textStorage[0]['text'], $textStorage));
+var_dump(edit(0, 'Обновленный заголовок', '', $textStorage));
 
 echo "Результат редактирования элемента с индексом 5: ";
 var_dump(edit(5, 'Новый заголовок', 'Новый текст', $textStorage));

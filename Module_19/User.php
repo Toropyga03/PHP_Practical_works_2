@@ -1,7 +1,7 @@
 <?php
 
 class User {
-    private $connection;
+    private PDO $connection;
     
     public function __construct() {
         $host = 'localhost';
@@ -21,7 +21,7 @@ class User {
         }
     }
 
-    public function create($data) {
+    public function create(array $data): bool {
         $sql = "INSERT INTO Users (email, first_name, last_name, age, date_created) 
                 VALUES (:email, :first_name, :last_name, :age, NOW())";
         
@@ -31,11 +31,11 @@ class User {
             ':email' => $data['email'],
             ':first_name' => $data['first_name'],
             ':last_name' => $data['last_name'],
-            ':age' => $data['age']
+            ':age' => (int)$data['age']
         ]);
     }
 
-    public function update($id, $data) {
+    public function update(int $id, array $data): bool {
         $sql = "UPDATE Users 
                 SET email = :email, 
                     first_name = :first_name, 
@@ -50,22 +50,31 @@ class User {
             ':email' => $data['email'],
             ':first_name' => $data['first_name'],
             ':last_name' => $data['last_name'],
-            ':age' => $data['age']
+            ':age' => (int)$data['age']
         ]);
     }
 
-    public function delete($id) {
+    public function delete(int $id): bool {
         $sql = "DELETE FROM Users WHERE id = :id";
         $stmt = $this->connection->prepare($sql);
         
         return $stmt->execute([':id' => $id]);
     }
     
-    public function list() {
+    public function list(): array {
         $sql = "SELECT * FROM Users ORDER BY id DESC";
         $stmt = $this->connection->query($sql);
         
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $result = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $result ?: [];
+    }
+
+    public function getById(int $id): ?array {
+        $sql = "SELECT * FROM Users WHERE id = :id";
+        $stmt = $this->connection->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result ?: null;
     }
 }
-?>

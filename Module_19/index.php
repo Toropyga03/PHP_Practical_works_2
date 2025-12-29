@@ -4,40 +4,74 @@ require_once 'User.php';
 $user = new User();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['action']) && $_POST['action'] === 'create') {
-        $data = [
-            'email' => $_POST['email'],
-            'first_name' => $_POST['first_name'],
-            'last_name' => $_POST['last_name'],
-            'age' => $_POST['age']
-        ];
+    if (isset($_POST['action'])) {
+        $action = $_POST['action'];
         
-        $user->create($data);
-        header('Location: index.php');
-        exit();
-    }
-    
-    if (isset($_POST['action']) && $_POST['action'] === 'update') {
-        $id = $_POST['id'];
-        $data = [
-            'email' => $_POST['email'],
-            'first_name' => $_POST['first_name'],
-            'last_name' => $_POST['last_name'],
-            'age' => $_POST['age']
-        ];
-        
-        $user->update($id, $data);
-        header('Location: index.php');
-        exit();
-    }
-    
-    if (isset($_POST['action']) && $_POST['action'] === 'delete') {
-        $id = $_POST['id'];
-        $user->delete($id);
-        header('Location: index.php');
-        exit();
+        switch ($action) {
+            case 'create':
+                $data = [
+                    'email' => filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL),
+                    'first_name' => filter_input(INPUT_POST, 'first_name'),
+                    'last_name' => filter_input(INPUT_POST, 'last_name'),
+                    'age' => filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT)
+                ];
+
+                if (!$data['email'] || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                    $error = 'Некорректный email';
+                } elseif (!$data['first_name'] || strlen($data['first_name']) < 2) {
+                    $error = 'Имя должно содержать минимум 2 символа';
+                } elseif (!$data['last_name'] || strlen($data['last_name']) < 2) {
+                    $error = 'Фамилия должна содержать минимум 2 символа';
+                } elseif (!$data['age'] || $data['age'] < 0 || $data['age'] > 150) {
+                    $error = 'Возраст должен быть от 0 до 150 лет';
+                } else {
+                    $user->create($data);
+                    header('Location: index.php');
+                    exit();
+                }
+                break;
+                
+            case 'update':
+                $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+                $data = [
+                    'email' => filter_input(INPUT_POST, 'email', FILTER_SANITIZE_EMAIL),
+                    'first_name' => filter_input(INPUT_POST, 'first_name'),
+                    'last_name' => filter_input(INPUT_POST, 'last_name'),
+                    'age' => filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT)
+                ];
+
+                if (!$id || $id < 1) {
+                    $error = 'Некорректный ID пользователя';
+                } elseif (!$data['email'] || !filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                    $error = 'Некорректный email';
+                } elseif (!$data['first_name'] || strlen($data['first_name']) < 2) {
+                    $error = 'Имя должно содержать минимум 2 символа';
+                } elseif (!$data['last_name'] || strlen($data['last_name']) < 2) {
+                    $error = 'Фамилия должна содержать минимум 2 символа';
+                } elseif (!$data['age'] || $data['age'] < 0 || $data['age'] > 150) {
+                    $error = 'Возраст должен быть от 0 до 150 лет';
+                } else {
+                    $user->update($id, $data);
+                    header('Location: index.php');
+                    exit();
+                }
+                break;
+                
+            case 'delete':
+                $id = filter_input(INPUT_POST, 'id', FILTER_VALIDATE_INT);
+                
+                if (!$id || $id < 1) {
+                    $error = 'Некорректный ID пользователя';
+                } else {
+                    $user->delete($id);
+                    header('Location: index.php');
+                    exit();
+                }
+                break;
+        }
     }
 }
+
 $users = $user->list();
 ?>
 
@@ -59,7 +93,7 @@ $users = $user->list();
             background: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
         }
         h1, h2 {
             color: #333;
@@ -132,18 +166,34 @@ $users = $user->list();
             border-radius: 8px;
             margin-top: 30px;
         }
-        .action-buttons {
-            display: flex;
-            gap: 5px;
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #ffcdd2;
         }
-        .table-form {
-            display: contents;
+        .success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            border: 1px solid #c8e6c9;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Управление пользователями</h1>
+        
+        <?php if (isset($error)): ?>
+            <div class="error">
+                <?= htmlspecialchars($error) ?>
+            </div>
+        <?php endif; ?>
+        
         <h2>Список пользователей</h2>
         <?php if (empty($users)): ?>
             <p>Пользователей нет. Добавьте первого пользователя.</p>
@@ -162,42 +212,67 @@ $users = $user->list();
                 </thead>
                 <tbody>
                     <?php foreach ($users as $userData): ?>
-
-                        <form method="POST" action="index.php" class="table-form">
-                            <tr>
-                                <td><?php echo htmlspecialchars($userData['id']); ?></td>
-                                <td>
-                                    <input type="email" name="email" value="<?php echo htmlspecialchars($userData['email']); ?>" required>
-                                </td>
-                                <td>
-                                    <input type="text" name="first_name" value="<?php echo htmlspecialchars($userData['first_name']); ?>" required>
-                                </td>
-                                <td>
-                                    <input type="text" name="last_name" value="<?php echo htmlspecialchars($userData['last_name']); ?>" required>
-                                </td>
-                                <td>
-                                    <input type="number" name="age" value="<?php echo htmlspecialchars($userData['age']); ?>" min="0" max="150" required>
-                                </td>
-                                <td><?php echo htmlspecialchars($userData['date_created']); ?></td>
-                                <td class="action-buttons">
-                                    <input type="hidden" name="id" value="<?php echo $userData['id']; ?>">
-                                    <input type="hidden" name="action" value="update">
-                                    <button type="submit" class="btn-edit">Сохранить</button>
-                                    <form method="POST" action="index.php" 
-                                          onsubmit="return confirm('Вы уверены, что хотите удалить этого пользователя?');"
-                                          style="display: inline;">
-                                        <input type="hidden" name="id" value="<?php echo $userData['id']; ?>">
-                                        <input type="hidden" name="action" value="delete">
-                                        <button type="submit" class="btn-delete">Удалить</button>
-                                    </form>
-                                </td>
-                            </tr>
-                        </form>
+                        <tr>
+                            <td><?= htmlspecialchars($userData['id']) ?></td>
+                            <td>
+                                <form method="POST" action="index.php" style="margin: 0;">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($userData['id']) ?>">
+                                    <input type="email" 
+                                           name="email" 
+                                           value="<?= htmlspecialchars($userData['email']) ?>" 
+                                           required 
+                                           style="width: 100%;">
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       name="first_name" 
+                                       value="<?= htmlspecialchars($userData['first_name']) ?>" 
+                                       required 
+                                       style="width: 100%;">
+                            </td>
+                            <td>
+                                <input type="text" 
+                                       name="last_name" 
+                                       value="<?= htmlspecialchars($userData['last_name']) ?>" 
+                                       required 
+                                       style="width: 100%;">
+                            </td>
+                            <td>
+                                <input type="number" 
+                                       name="age" 
+                                       value="<?= htmlspecialchars($userData['age']) ?>" 
+                                       min="0" 
+                                       max="150" 
+                                       required 
+                                       style="width: 100%;">
+                            </td>
+                            <td><?= htmlspecialchars($userData['date_created']) ?></td>
+                            <td>
+                                <button type="submit" 
+                                        name="action" 
+                                        value="update" 
+                                        class="btn-edit" 
+                                        style="margin-right: 5px;">
+                                    Сохранить
+                                </button>
+                                </form>
+                                
+                                <form method="POST" action="index.php" style="display: inline; margin: 0;">
+                                    <input type="hidden" name="id" value="<?= htmlspecialchars($userData['id']) ?>">
+                                    <input type="hidden" name="action" value="delete">
+                                    <button type="submit" 
+                                            class="btn-delete" 
+                                            onclick="return confirm('Вы уверены, что хотите удалить пользователя?');">
+                                        Удалить
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
                     <?php endforeach; ?>
                 </tbody>
             </table>
         <?php endif; ?>
-        
+
         <div class="add-form">
             <h2>Добавить нового пользователя</h2>
             <form method="POST" action="index.php">
@@ -205,22 +280,18 @@ $users = $user->list();
                     <label for="email">Email:</label>
                     <input type="email" id="email" name="email" required>
                 </div>
-                
                 <div class="form-group">
                     <label for="first_name">Имя:</label>
-                    <input type="text" id="first_name" name="first_name" required>
+                    <input type="text" id="first_name" name="first_name" required minlength="2">
                 </div>
-                
                 <div class="form-group">
                     <label for="last_name">Фамилия:</label>
-                    <input type="text" id="last_name" name="last_name" required>
+                    <input type="text" id="last_name" name="last_name" required minlength="2">
                 </div>
-                
                 <div class="form-group">
                     <label for="age">Возраст:</label>
                     <input type="number" id="age" name="age" min="0" max="150" required>
                 </div>
-                
                 <input type="hidden" name="action" value="create">
                 <input type="submit" value="Добавить пользователя">
             </form>
